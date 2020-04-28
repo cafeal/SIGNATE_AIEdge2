@@ -1,0 +1,30 @@
+hydra:
+    run:
+        dir: ./outputs/${now:%Y-%m-%d}/${net}
+
+seed: 0
+data_dir: ../../data/
+img_height: 1216 # 2^6 x 19
+img_width: 1936 # 2^4 x 11^2
+scale_ratio: 4
+n_classes: 6
+
+extractor: mobilnet_v2
+detector: mobilenet_v2
+optimizer: adam
+min_epochs: 40
+max_epochs: 1000
+gpus: 1
+lr: 1.25e-4
+batch_size: 16
+num_workers: 8
+resume: ""
+
+aug_flip: true
+aug_brightness: true
+aug_randomcrop: true
+
+early_stopping_round: 20
+reduce_lr_round: 10
+
+submission_file: submission.json

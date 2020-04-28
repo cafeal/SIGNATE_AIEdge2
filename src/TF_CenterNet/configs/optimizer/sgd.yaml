@@ -1,0 +1,5 @@
+optimizer:
+    name: sgd
+    lr: 1.25e-4
+    momentum: 0.9
+    nesterov: true

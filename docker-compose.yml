@@ -1,0 +1,38 @@
+version: "2.3"
+services:
+  app: &app
+    build:
+      context: .
+      dockerfile: ./dockerfiles/app.Dockerfile
+    runtime: nvidia
+    entrypoint: ["/bin/bash", "./dockerfiles/app.entrypoint"]
+    #  shm_size: 512m
+    ipc: host
+    working_dir: /home
+    volumes: 
+    - .:/home
+    - cache:/root/.cache
+    - keras:/root/.keras
+  tensorboard:
+    <<: *app
+    command: ["tensorboard", "--logdir", "${LOGDIR}", "--host", "0.0.0.0"]
+    working_dir: /home/
+    ports:
+    - 9001:6006
+  jupyter:
+    <<: *app
+    command: ["jupyter", "notebook", "--ip", "0.0.0.0", "--allow-root", "--no-browser"]
+    working_dir: /home/
+    ports:
+    - 9000:8888
+    environment:
+      NVIDIA_VISIBLE_DEVICES: 0
+    volumes:
+    - .:/home
+    - cache:/root/.cache
+    - keras:/root/.keras
+    - ~/.jupyter:/root/.jupyter    
+ 
+volumes:
+  cache:
+  keras:

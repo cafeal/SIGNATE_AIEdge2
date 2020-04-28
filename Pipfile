@@ -1,0 +1,43 @@
+[[source]]
+name = "pypi"
+url = "https://pypi.org/simple"
+verify_ssl = true
+
+[dev-packages]
+jupyter = "*"
+ipython = "*"
+black = "*"
+
+[packages]
+numpy = "*"
+scipy = "<1.4"
+albumentations = "*"
+pandas = "*"
+opencv-python = "*"
+requests = "*"
+cython = "*"
+pillow = "==6.2.1"
+# tensorboard = "*"
+future = "*"
+pytorch-lightning = {git = "https://github.com/PyTorchLightning/pytorch-lightning"}
+hydra-core = "*"
+torch = "*"
+torchvision = "*"
+scikit-learn = "*"
+tqdm = "*"
+efficientnet-pytorch = "*"
+# tf 1.12 GPU
+tensorflow-gpu = {file = "https://files.pythonhosted.org/packages/55/7e/bec4d62e9dc95e828922c6cec38acd9461af8abe749f7c9def25ec4b2fdb/tensorflow_gpu-1.12.0-cp36-cp36m-manylinux1_x86_64.whl"}
+# tf 1.12 CPU linux
+# tensorflow = {file = "https://files.pythonhosted.org/packages/22/cc/ca70b78087015d21c5f3f93694107f34ebccb3be9624385a911d4b52ecef/tensorflow-1.12.0-cp36-cp36m-manylinux1_x86_64.whl"}
+# tf 1.12 CPU Mac
+# tensorflow = {file = "https://files.pythonhosted.org/packages/81/07/be624c7e0a63b080a76b7f6faf417eecdc5f6480f6a740a8bcf8991bce0b/tensorflow-1.12.0-cp36-cp36m-macosx_10_11_x86_64.whl"}
+seaborn = "*"
+TF_CenterNet = {editable = true,path = "./src"}
+fastprogress = "*"
+
+[requires]
+python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true

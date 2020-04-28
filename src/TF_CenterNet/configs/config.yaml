@@ -1,0 +1,35 @@
+defaults:
+    - optimizer: adam
+    - scale: scale_4
+
+seed: 0
+data_dir: ../../data/
+img_height: 1216 # 2^6 x 19
+img_width: 1936 # 2^4 x 11^2
+n_classes: 6
+
+extractor: mobilenet_v2
+detector: resnet
+stride: 4
+n_gpus: 1
+optimizer: adam
+n_epochs: 400
+batch_size: 16
+num_workers: 8
+logdir: "logdir"
+resume: ""
+
+aug_flip: true
+aug_brightness: true
+aug_randomcrop: true
+shuffle_buffer_size: 128
+reshuffle_each_iteration: true
+
+early_stopping_round: 20
+reduce_lr_round: 10
+
+n_subset: -1
+
+
+submission_file: "submission-{epoch:04d}.json"
+profiling_file: "{extractor}-{detector}-scale_ratio_{scale_ratio}-batch_size_{batch_size}-timeline"

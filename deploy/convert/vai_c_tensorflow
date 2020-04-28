@@ -1,0 +1,171 @@
+#!/usr/bin/env python3
+# -*- encoding:utf-8 -*-
+# Copyright 2019 Xilinx Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# $ vai_c_tensorflow –frozen_pb foo.pb –arch xdnnv3_throughput –output_dir mymodel –net_name mymodel –options “foo=1;bar=2
+#$ vai_c_caffe --prototxt foo.prototxt –caffemodel –arch xdnnv3_throughput –output_dir mymodel –net_name mymodel –options “foo=1;bar=2”
+# --framework = dpu/xdnn/etc
+# --quant_info = file with quantization information
+# For TF:
+# --place_holder_shape “{‘data’ : [1,224,224,3]}”
+from __future__ import print_function
+
+import os
+import sys
+sys.path.insert(0, "/opt/vitis_ai/compiler")
+os.environ["VAI_ROOT"] = "/opt/vitis_ai"
+
+
+parameters =[
+    ("-f", "--frozen_pb",     str,None,     'store',"prototxt"),
+    ("-a", "--arch",         str,None,     'store',"json file"),
+    ("-o", "--output_dir",   str,"./",     'store',"output directory"),
+    ("-n", "--net_name",     str,"./",     'store',"prefix-name for the outputs"),
+    ("-e", "--options",     str,"",        'store',"extra options"),
+    ("-q", "--quant_info", bool,False,     'store_true',"extract quant info"),
+]
+
+
+#from vai.dpuv1.rt.xdnn_util import dict2attr
+import json
+import argparse
+
+
+
+def default_compiler_arg_parser(params=parameters):
+  # NOTE: Not all arguments are passed as separate variables to backend functions.
+  # Removing a line here may cause errors until we can completely remove the args parameter from backend functions
+
+  parser = argparse.ArgumentParser()
+  for x in params:
+      #dprint("Adding arguments:",x)
+      if x[2] is bool:
+          if x[0] is not None:
+              parser.add_argument(x[0], x[1], default=x[3], action=x[4], help=x[5])
+          else:
+              parser.add_argument(x[1], default=x[3], action=x[4], help=x[5])
+      elif x[0] is not None:
+          parser.add_argument(x[0], x[1], type=x[2], default=x[3], action=x[4], help=x[5])
+      else:
+          parser.add_argument(x[1], type=x[2], default=x[3], action=x[4], help=x[5])
+  return parser
+
+
+class VAI_TensorFlow_Frontend():
+
+    def __init__(self, args=None):
+        self.c = None
+        self.res = None
+        self.args = args
+        self.frontend = 'xfdnn'
+
+        if args is None:
+          ## load default arguments
+          parser = default_compiler_arg_parser()
+          args = parser.parse_args([]) # Parse an empty list
+
+        data = None
+        print(args.arch)
+        with  open(args.arch) as json_data:
+            if json_data:
+                data = json.load(json_data)
+                #print(data)
+                #print(type(data))
+        if data and  data['target'] == 'xdnn':
+            self.res = data
+            update= {
+                'networkfile' : args.frozen_pb,
+                'framework' : 'tensorflow',
+                'platform' : 'xfdnn3',
+                'outputdir' : args.output_dir,
+                'generatefile' : args.net_name
+            }
+            if args.options is not "":
+                u = eval(args.options)
+                update.update(u)
+            from  vai.dpuv1.tools.compile.bin.xfdnn_compiler_interface import XFDNNFrontend
+            self.c = XFDNNFrontend(None,update)
+        elif data and data['target'] == 'dpuv2' or data['target'] == 'dpuv3':
+            update = {
+               'dpu' : data['target'],
+               'parser' : 'tensorflow',
+               'frozen_pb': args.frozen_pb,
+               'output_dir': args.output_dir,
+               'net_name' : args.net_name
+            }
+            # remove target and use other options
+            data.pop('target', None)
+            update.update(data)
+            # options will override the settings in the .json
+            if args.options is not "":
+                u = eval(args.options)
+                update.update(u)
+            from dnnc.dnnc_compiler_interface import DNNCFrontend
+            self.c = DNNCFrontend(update)
+            self.frontend = 'dnnc'
+        else:
+            self.c = None
+
+    def compile(self):
+        if self.c is None:
+            print_banner(" NO FRONT END SPECIFIED")
+            return None
+        result =  self.c.compile()
+        if self.frontend is 'dnnc':
+            return result
+
+        if self.args.quant_info:
+            return None
+
+        if self.args.frozen_pb.rfind("/")>0:
+          name = self.args.frozen_pb[self.args.frozen_pb.rfind("/")+1:]
+        else:
+          name = self.args.frozen_pb
+
+        DIR = self.args.output_dir+"/"
+
+        weight   = name+"_data.h5"
+        compiler  = self.args.net_name+".json"
+        quantizer = self.args.net_name+"_quant.json"
+
+        import os
+        os.rename(DIR+weight,    DIR+'weights.h5'    )
+        os.rename(DIR+compiler,  DIR+'compiler.json' )
+        os.rename(DIR+quantizer, DIR+'quantizer.json')
+        self.res['workdirectory'] = DIR
+        self.res['weights']     = DIR+'weights.h5'
+        self.res['compiler']  = DIR+'compiler.json'
+        self.res['quantizer'] = DIR+'quantizer.json'
+        with  open(self.args.output_dir+"/meta.json",'w') as F :
+          F.write(json.dumps(self.res, indent=4,sort_keys=True))
+          F.close()
+        return result
+
+
+
+if __name__ == "__main__":
+    print("**************************************************")
+    print("* VITIS_AI Compilation - Xilinx Inc.")
+    print("**************************************************")
+    #import pdb
+    #pdb.set_trace()
+    parser = default_compiler_arg_parser()
+    args = parser.parse_args()
+    #print(args)
+    #pdb.set_trace()
+    compiler = VAI_TensorFlow_Frontend(args)
+    #print_banner("Compilation using %s Front End" % "Pnzi")
+
+    compiler.compile()

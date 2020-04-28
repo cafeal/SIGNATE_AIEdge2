@@ -1,0 +1,7 @@
+.vscode
+.git
+data
+notebooks
+vendor
+src/**/multiruns
+src/**/outputs
